@@ -1,2 +1,1 @@
-# instagram-anonymous-story-viewer
-instagram-anonymous-story-viewer
+# Instagram Anonymous Story Viewer
