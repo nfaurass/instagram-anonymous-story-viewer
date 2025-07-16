@@ -73,7 +73,6 @@ runWhenReady(async () => {
             if (!profileId) return;
             const stories = await instagram.getUserStories(profileId);
             if (!stories || stories.length === 0) return;
-            console.log(stories);
             const medias = stories.reels_media[0].items || [];
             if (!medias.length) {
                 sidebarContent.innerText = "No stories found.";
@@ -81,7 +80,6 @@ runWhenReady(async () => {
             }
             sidebarContent.innerText = "";
             for (const item of medias) {
-                console.log("Story item:", item);
                 if (item.video_versions && item.video_versions.length > 0) createStoryVideoElement(item, sidebarContent);
                 else createStoryImageElement(item, sidebarContent);
             }

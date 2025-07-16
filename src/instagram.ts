@@ -8,20 +8,15 @@ export class Instagram {
     }
 
     async getUserByUsername(username: string): Promise<any | undefined> {
-        console.debug(`Fetching user data for username: ${username}`);
         if (!(username in this.userCache)) {
             const apiPath = `users/web_profile_info/?username=${username}`;
             const data = await this.sendAPIRequestByPath(apiPath);
-            if (data && data.data && data.data.user) {
-                this.userCache[username] = data.data.user;
-            }
-            console.debug(`data: ${data}`);
+            if (data && data.data && data.data.user) this.userCache[username] = data.data.user;
         }
         return this.userCache[username];
     }
 
     async getUserStories(userID: string): Promise<any> {
-        console.debug(`Fetching stories for user ID: ${userID}`);
         return this.sendAPIRequestByPath(`feed/reels_media/?reel_ids=${userID}`);
     }
 
@@ -35,7 +30,6 @@ export class Instagram {
                 credentials: "include"
             });
             if (!response.ok) {
-                console.debug(`Error ${response.status} for ${url}: ${response.statusText}`);
                 throw new Error(`Request failed with status ${response.status}`);
             }
             return await response.json();
