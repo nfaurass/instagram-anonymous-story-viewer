@@ -4,6 +4,7 @@
   "description": "View Instagram stories anonymously.",
   "scripts": {
     "build": "webpack",
+    "watch": "webpack --watch",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
