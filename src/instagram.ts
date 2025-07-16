@@ -1,0 +1,61 @@
+type ParsedURL = {
+    isInstagram: boolean;
+    pageType: "post_detail" | "profile_detail" | "static_page" | "";
+    paths: string[];
+    params: { postCode?: string; username?: string };
+    error?: string;
+};
+
+type InstagramUser = any;
+
+export class Instagram {
+    private static API_URL = "https://i.instagram.com/api/v1";
+    private userCache: Record<string, InstagramUser> = {};
+    private readonly APP_ID;
+
+    constructor(appId: string) {
+        this.APP_ID = appId;
+    }
+
+    async getUserByUsername(username: string): Promise<InstagramUser | undefined> {
+        console.debug(`Fetching user data for username: ${username}`);
+        if (!(username in this.userCache)) {
+            const apiPath = `users/web_profile_info/?username=${username}`;
+            const data = await this.sendAPIRequestByPath(apiPath);
+            if (data && data.data && data.data.user) {
+                this.userCache[username] = data.data.user;
+            }
+            console.debug(`data: ${data}`);
+        }
+        return this.userCache[username];
+    }
+
+    async getUserStories(userID: string): Promise<any> {
+        console.debug(`Fetching stories for user ID: ${userID}`);
+        return this.sendAPIRequestByPath(`feed/reels_media/?reel_ids=${userID}`);
+    }
+
+    private async sendAPIRequest(url: string): Promise<any> {
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "x-ig-app-id": this.APP_ID,
+                },
+                credentials: "include"
+            });
+            if (!response.ok) {
+                console.debug(`Error ${response.status} for ${url}: ${response.statusText}`);
+                throw new Error(`Request failed with status ${response.status}`);
+            }
+            return await response.json();
+        } catch (err) {
+            console.error(`Network error for ${url}`, err);
+            throw err;
+        }
+    }
+
+    private sendAPIRequestByPath(path: string): Promise<any> {
+        return this.sendAPIRequest(`${Instagram.API_URL}/${path}`);
+    }
+}
