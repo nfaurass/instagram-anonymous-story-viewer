@@ -1,57 +1,92 @@
-const anonBtn = document.createElement("button");
-anonBtn.textContent = "View Anonymously";
-anonBtn.style.position = "fixed";
-anonBtn.style.top = "40px";
-anonBtn.style.right = "40px";
-anonBtn.style.padding = "12px 24px";
-anonBtn.style.backgroundColor = "#3897f0";
-anonBtn.style.color = "white";
-anonBtn.style.border = "none";
-anonBtn.style.borderRadius = "25px";
-anonBtn.style.cursor = "pointer";
-anonBtn.style.zIndex = "1000000";
-anonBtn.style.fontSize = "16px";
-anonBtn.style.boxShadow = "0 4px 8px rgba(0,0,0,0.2)";
-document.body.appendChild(anonBtn);
+import {createHtml, createStoryImageElement, createStoryVideoElement} from "./html";
+import {Instagram} from "./instagram";
 
-const sidebar = document.createElement("div");
-sidebar.style.position = "fixed";
-sidebar.style.top = "0";
-sidebar.style.right = "0";
-sidebar.style.height = "100vh";
-sidebar.style.width = "40%";
-sidebar.style.maxWidth = "80vw";
-sidebar.style.backgroundColor = "white";
-sidebar.style.boxShadow = "-3px 0 10px rgba(0,0,0,0.2)";
-sidebar.style.padding = "20px";
-sidebar.style.boxSizing = "border-box";
-sidebar.style.zIndex = "1000001";
-sidebar.style.transform = "translateX(100%)";
-sidebar.style.transition = "transform 0.3s ease-in-out";
+function runWhenReady(callback: () => void) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", callback);
+    else callback();
+}
 
-const closeBtn = document.createElement("button");
-closeBtn.textContent = "✕";
-closeBtn.style.position = "absolute";
-closeBtn.style.top = "10px";
-closeBtn.style.right = "10px";
-closeBtn.style.background = "transparent";
-closeBtn.style.border = "none";
-closeBtn.style.fontSize = "24px";
-closeBtn.style.cursor = "pointer";
-
-const sidebarContent = document.createElement("div");
-sidebarContent.textContent = "Stories to be displayed here";
-sidebarContent.style.marginTop = "50px";
-sidebarContent.style.fontSize = "16px";
-sidebarContent.style.color = "#333";
-sidebar.appendChild(closeBtn);
-sidebar.appendChild(sidebarContent);
-document.body.appendChild(sidebar);
-
-anonBtn.addEventListener("click", () => {
-    sidebar.style.transform = "translateX(0)";
-});
-
-closeBtn.addEventListener("click", () => {
-    sidebar.style.transform = "translateX(100%)";
+runWhenReady(async () => {
+    const pathParts = window.location.pathname.split("/").filter(Boolean);
+    const username = pathParts[0];
+    const isProfilePage = pathParts.length === 1 || (pathParts.length === 2 && ["reels", "tagged", "followers", "following"].includes(pathParts[1]));
+    if (!isProfilePage || !username) return;
+    const sidebarContent = createHtml();
+    const viewBtn = document.getElementById("iasv-close-anonBtn");
+    if (!viewBtn) return;
+    viewBtn.addEventListener("click", async () => {
+        const findAppInfo = (): Promise<{ appId: string; profileId: string | null }> => {
+            return new Promise((resolve) => {
+                const extractInfo = (text: string): { appId: string; profileId: string | null } | null => {
+                    const appIdMatch = text.match(/X-IG-App-ID\s*["']?\s*[:=]\s*["']([^"']+)["']/);
+                    const profileMatch = text.match(/"page_id":"profilePage_(\d+)"[^}]*"profile_id":"(\d+)"/);
+                    if (appIdMatch) {
+                        if (profileMatch && profileMatch[1] === profileMatch[2]) return {
+                            appId: appIdMatch[1],
+                            profileId: profileMatch[1]
+                        };
+                        else return {
+                            appId: appIdMatch[1],
+                            profileId: null
+                        };
+                    }
+                    return null;
+                };
+                const scanTree = (): { appId: string; profileId: string | null } | null => {
+                    const treeWalker = document.createTreeWalker(document, NodeFilter.SHOW_ALL, null);
+                    while (treeWalker.nextNode()) {
+                        const node = treeWalker.currentNode;
+                        if (node.nodeType === Node.COMMENT_NODE || node.nodeType === Node.TEXT_NODE || ("tagName" in node && (node.tagName === "SCRIPT" || node.tagName === "NOSCRIPT"))) {
+                            const text = node.textContent;
+                            if (!text) continue;
+                            const result = extractInfo(text);
+                            if (result) return result;
+                        }
+                    }
+                    return null;
+                };
+                const immediateResult = scanTree();
+                if (immediateResult) {
+                    resolve(immediateResult);
+                    return;
+                }
+                const observer = new MutationObserver(() => {
+                    const result = scanTree();
+                    if (result) {
+                        observer.disconnect();
+                        resolve(result);
+                    }
+                });
+                observer.observe(document.documentElement, {childList: true, subtree: true});
+            });
+        };
+        let {appId, profileId} = await findAppInfo();
+        if (!appId) return;
+        sidebarContent.innerText = "Loading stories...";
+        const instagram = new Instagram(appId);
+        try {
+            if (!profileId) {
+                const user = await instagram.getUserByUsername(username);
+                if (!user) return;
+                else profileId = user.id;
+            }
+            if (!profileId) return;
+            const stories = await instagram.getUserStories(profileId);
+            if (!stories || stories.length === 0) return;
+            console.log(stories);
+            const medias = stories.reels_media[0].items || [];
+            if (!medias.length) {
+                sidebarContent.innerText = "No stories found.";
+                return;
+            }
+            sidebarContent.innerText = "";
+            for (const item of medias) {
+                console.log("Story item:", item);
+                if (item.video_versions && item.video_versions.length > 0) createStoryVideoElement(item, sidebarContent);
+                else createStoryImageElement(item, sidebarContent);
+            }
+        } catch {
+            sidebarContent.innerText = `Failed to load stories.`;
+        }
+    });
 });
