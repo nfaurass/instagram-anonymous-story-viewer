@@ -18,13 +18,11 @@
     "48": "public/icon.png",
     "128": "public/icon.png"
   },
-  "background": {
-    "service_worker": "dist/background.js"
-  },
+  "background": {},
   "content_scripts": [
     {
       "matches": [
-        "https://www.instagram.com/*"
+        "*://*.instagram.com/*"
       ],
       "js": [
         "dist/content.js"
@@ -38,7 +36,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://www.instagram.com/*"
+    "https://*.instagram.com/*"
   ],
   "options_page": "html/options.html"
 }
