@@ -1,23 +1,13 @@
-type ParsedURL = {
-    isInstagram: boolean;
-    pageType: "post_detail" | "profile_detail" | "static_page" | "";
-    paths: string[];
-    params: { postCode?: string; username?: string };
-    error?: string;
-};
-
-type InstagramUser = any;
-
 export class Instagram {
     private static API_URL = "https://i.instagram.com/api/v1";
-    private userCache: Record<string, InstagramUser> = {};
+    private userCache: Record<string, any> = {};
     private readonly APP_ID;
 
     constructor(appId: string) {
         this.APP_ID = appId;
     }
 
-    async getUserByUsername(username: string): Promise<InstagramUser | undefined> {
+    async getUserByUsername(username: string): Promise<any | undefined> {
         console.debug(`Fetching user data for username: ${username}`);
         if (!(username in this.userCache)) {
             const apiPath = `users/web_profile_info/?username=${username}`;
